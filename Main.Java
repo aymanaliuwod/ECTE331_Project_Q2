@@ -1,51 +1,42 @@
-import java.io.File;
-import java.util.concurrent.atomic.AtomicIntegerArray;
-
 public class MainApp {
 
     public static void main(String[] args) {
-        String inputFile = "c:/image/Rain_Tree.jpg";
-        String outputFile = "c:/image/Rain_Tree_Equalised.jpg";
-
-        int numOfThreads = 4;  // Change for testing
-        int numRuns = 3;
+        String inputImagePath = "c:/image/Rain_Tree.jpg";
+        String outputImagePathST = "c:/image/Output_SingleThread.jpg";
+        String outputImagePathMT = "c:/image/Output_MultiThread.jpg";
+        int numThreads = 4;
+        int repeat = 3;
 
         ColourImage inputImage = new ColourImage();
-        ImageReadWrite.readJpgImage(inputFile, inputImage);
+        ImageReadWrite.readJpgImage(inputImagePath, inputImage);
 
-        ColourImage outputST = new ColourImage(inputImage.width, inputImage.height);
-        ColourImage outputMT1 = new ColourImage(inputImage.width, inputImage.height);
-        ColourImage outputMT2 = new ColourImage(inputImage.width, inputImage.height);
+        ColourImage resultST = new ColourImage(inputImage.width, inputImage.height);
+        ColourImage resultMT = new ColourImage(inputImage.width, inputImage.height);
 
-        Timer timer = new Timer();
+        HistogramEqualiser equaliser = new HistogramEqualiser();
 
-        // --- Single-threaded execution ---
-        double totalST = 0;
-        for (int i = 0; i < numRuns; i++) {
-            timer.resetTimer();
-            HistogramEqualiser.equaliseSingleThread(inputImage, outputST);
-            totalST += timer.elapsedTime();
+        System.out.println("Running Single Threaded Version...");
+        double avgTimeST = 0;
+        for (int i = 0; i < repeat; i++) {
+            Timer timer = new Timer();
+            equaliser.equaliseSingleThread(inputImage, resultST);
+            avgTimeST += timer.elapsedTime();
         }
-        System.out.printf("Average Single-Threaded Time: %.2f ms\n", totalST / numRuns);
+        avgTimeST /= repeat;
+        System.out.printf("Average Time (Single Thread): %.2f ms\n", avgTimeST);
 
-        // --- Multi-threaded (Shared Histogram - Atomic) ---
-        double totalMT1 = 0;
-        for (int i = 0; i < numRuns; i++) {
-            timer.resetTimer();
-            HistogramEqualiser.equaliseMultiThreadSharedAtomic(inputImage, outputMT1, numOfThreads);
-            totalMT1 += timer.elapsedTime();
+        ImageReadWrite.writeJpgImage(resultST, outputImagePathST);
+
+        System.out.println("Running Multi Threaded Version...");
+        double avgTimeMT = 0;
+        for (int i = 0; i < repeat; i++) {
+            Timer timer = new Timer();
+            equaliser.equaliseMultiThread(inputImage, resultMT, numThreads);
+            avgTimeMT += timer.elapsedTime();
         }
-        System.out.printf("Average Multi-Threaded (Shared Atomic) Time: %.2f ms\n", totalMT1 / numRuns);
+        avgTimeMT /= repeat;
+        System.out.printf("Average Time (Multi Thread - %d threads): %.2f ms\n", numThreads, avgTimeMT);
 
-        // --- Multi-threaded (Per-thread histogram) ---
-        double totalMT2 = 0;
-        for (int i = 0; i < numRuns; i++) {
-            timer.resetTimer();
-            HistogramEqualiser.equaliseMultiThreadPerThreadHistogram(inputImage, outputMT2, numOfThreads);
-            totalMT2 += timer.elapsedTime();
-        }
-        System.out.printf("Average Multi-Threaded (Per-thread histograms) Time: %.2f ms\n", totalMT2 / numRuns);
-
-        ImageReadWrite.writeJpgImage(outputMT2, outputFile);
+        ImageReadWrite.writeJpgImage(resultMT, outputImagePathMT);
     }
 }
