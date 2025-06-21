@@ -1,0 +1,85 @@
+package histogram;
+
+import java.awt.image.BufferedImage; // Needed for working with images
+import javax.imageio.ImageIO;       // Needed for reading/writing image files
+import java.io.File;                 // Needed for file operations
+import java.io.IOException;          // Handles file-related errors
+
+public class ImageApp {
+    public static void main(String[] args) {
+        try {
+            // My image file, placed directly in the project root folder for easy access.
+            File input = new File("Rain_Tree.jpg");
+            
+            // --- Single-Thread Implementation ---
+            System.out.println("Starting image processing: " + input.getAbsolutePath());
+            System.out.println("\n--- Single-Thread ---");
+            BufferedImage originalImageSingle = ImageIO.read(input); // Load the image for this test
+            if (originalImageSingle == null) {
+                System.err.println("Error: Couldn't load the image for single-thread test. Check the path and file name (Rain_Tree.jpg).");
+                return;
+            }
+            long startTimeSingle = System.currentTimeMillis(); // Time how long it takes
+            BufferedImage singleThreadResult = HistogramEqualizer.equalizeSingleThread(originalImageSingle);
+            long endTimeSingle = System.currentTimeMillis();
+            // Save the single-threaded result
+            ImageIO.write(singleThreadResult, "jpg", new File("Equalized_Single.jpg"));
+            System.out.println("Single-thread equalization time: " + (endTimeSingle - startTimeSingle) + " ms");
+
+            // --- Multi-Thread Implementation (Channel-based) ---
+            System.out.println("\n--- Multi-Thread (Channel-based) ---");
+            BufferedImage originalImageChannel = ImageIO.read(input); // Load the image for this test
+            if (originalImageChannel == null) {
+                System.err.println("Error: Couldn't load the image for channel-based multi-thread test. Check the path and file name (Rain_Tree.jpg).");
+                return;
+            }
+            long startTimeChannel = System.currentTimeMillis(); // Time this version
+            // My multi-threaded version, where each color channel (R, G, B) gets its own thread.
+            BufferedImage multiThreadResult = HistogramEqualizer.equalizeMultiThread(originalImageChannel);
+            long endTimeChannel = System.currentTimeMillis();
+            // Save the multi-threaded result
+            ImageIO.write(multiThreadResult, "jpg", new File("Equalized_Multi_Channel.jpg"));
+            System.out.println("Multi-thread equalization time (Channel-based): " + (endTimeChannel - startTimeChannel) + " ms");
+
+
+            // --- Multi-Thread Implementation (Shared Atomic Histogram) ---
+            System.out.println("\n--- Multi-Thread (Shared Atomic Histogram) ---");
+            // Test with different numbers of threads as required by the project
+            int[] threadCounts = {2, 4, 8}; // Example thread counts; adjust as needed for your analysis
+
+            for (int numThreads : threadCounts) {
+                BufferedImage originalImageAtomic = ImageIO.read(input); // Load the image for each test run
+                if (originalImageAtomic == null) {
+                    System.err.println("Error: Couldn't load the image for atomic multi-thread test. Check the path and file name (Rain_Tree.jpg).");
+                    return;
+                }
+                long startTimeAtomic = System.currentTimeMillis();
+                BufferedImage atomicResult = HistogramEqualizer.equalizeMultiThreadSharedAtomic(originalImageAtomic, numThreads);
+                long endTimeAtomic = System.currentTimeMillis();
+                ImageIO.write(atomicResult, "jpg", new File("Equalized_Atomic_" + numThreads + ".jpg"));
+                System.out.println("Multi-thread time (Atomic, " + numThreads + " threads): " + (endTimeAtomic - startTimeAtomic) + " ms");
+            }
+
+
+            // --- Multi-Thread Implementation (Sub-Histograms) ---
+            System.out.println("\n--- Multi-Thread (Sub-Histograms) ---");
+            for (int numThreads : threadCounts) { // Reusing thread counts for consistency
+                BufferedImage originalImageSub = ImageIO.read(input); // Load the image for each test run
+                if (originalImageSub == null) {
+                    System.err.println("Error: Couldn't load the image for sub-histogram multi-thread test. Check the path and file name (Rain_Tree.jpg).");
+                    return;
+                }
+                long startTimeSub = System.currentTimeMillis();
+                BufferedImage subResult = HistogramEqualizer.equalizeMultiThreadSubHistograms(originalImageSub, numThreads);
+                long endTimeSub = System.currentTimeMillis();
+                ImageIO.write(subResult, "jpg", new File("Equalized_Sub_" + numThreads + ".jpg"));
+                System.out.println("Multi-thread time (Sub-Histograms, " + numThreads + " threads): " + (endTimeSub - startTimeSub) + " ms");
+            }
+
+        } catch (IOException | InterruptedException e) {
+            // Catch any errors during file operations or thread interruptions
+            System.err.println("An error occurred during image processing:");
+            e.printStackTrace();
+        }
+    }
+}
